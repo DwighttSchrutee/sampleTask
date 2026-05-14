@@ -1,0 +1,75 @@
+{
+  "feature_names": [
+    "loan_amt",
+    "term_months",
+    "roi_initial",
+    "emi",
+    "monthly_income",
+    "dti",
+    "borrower_age",
+    "has_coborrower",
+    "emp_type_enc",
+    "loan_purpose_enc",
+    "property_type_enc",
+    "rate_type_enc",
+    "loan_scheme_enc",
+    "dpd_slope_3m",
+    "dpd_acceleration",
+    "dishonor_slope_3m",
+    "stuck_high_indicator",
+    "arrear_balance_trend",
+    "payment_gap_variance",
+    "dpd_month11",
+    "arrear_month11",
+    "dishonor_rate_all",
+    "mean_dpd_all"
+  ],
+  "op_threshold_3m": 0.999999999,
+  "op_threshold_6m": 0.999999999,
+  "metrics": {
+    "3m": {
+      "auc": 0.9895615542107837,
+      "brier": 0.016630065649125392,
+      "prec10": 0.9511111111111111,
+      "rec10": 0.84251968503937,
+      "cm": [
+        [
+          3992,
+          0
+        ],
+        [
+          395,
+          113
+        ]
+      ],
+      "brier_raw": 0.01869342479570539,
+      "brier_calibrated": 0.016630065649125392,
+      "op_threshold": 0.999999999,
+      "coverage_op": 0.025111111111111112,
+      "precision_op": 1.0,
+      "recall_op": 0.22244094488188976
+    },
+    "6m": {
+      "auc": 0.9913387552794691,
+      "brier": 0.00974367000833728,
+      "prec10": 0.9844444444444445,
+      "rec10": 0.638328530259366,
+      "cm": [
+        [
+          3795,
+          11
+        ],
+        [
+          35,
+          659
+        ]
+      ],
+      "brier_raw": 0.00975211554335809,
+      "brier_calibrated": 0.00974367000833728,
+      "op_threshold": 0.999999999,
+      "coverage_op": 0.14888888888888888,
+      "precision_op": 0.9835820895522388,
+      "recall_op": 0.9495677233429395
+    }
+  }
+}
