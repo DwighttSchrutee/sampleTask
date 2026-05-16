@@ -20,8 +20,9 @@ source venv/bin/activate
 ```bash
 pip install -r requirements.txt
 python generate_data.py          # produces loans_static.csv, behavior_history.csv
+brew install libomp              #For mac
 python src/training/train.py     # trains, calibrates, saves artifacts to models/
-uvicorn src.api.main:app         # starts API on http://localhost:8000
+python -m uvicorn src.api.main:app         # starts API on http://localhost:8000
 ```
 
 OpenAPI docs: [http://localhost:8000/docs](http://localhost:8000/docs)
