@@ -7,6 +7,17 @@ Early Warning System predicting loan default probability at **3-month** and **6-
 ## Quickstart
 
 ```bash
+# Create virtual environment
+python3 -m venv venv
+
+# Activate on Windows
+venv\Scripts\activate
+
+# Activate on macOS / Linux
+source venv/bin/activate
+```
+
+```bash
 pip install -r requirements.txt
 python generate_data.py          # produces loans_static.csv, behavior_history.csv
 python src/training/train.py     # trains, calibrates, saves artifacts to models/
@@ -47,14 +58,14 @@ repo/
 
 All features use only `month_idx < 12`. A leakage guard in `build_trajectory_features()` raises `ValueError` immediately if any row with `month_idx >= 12` is present.
 
-| Feature | Formula | Why it predicts default |
-|---|---|---|
-| `dpd_slope_3m` | OLS slope of DPD over months 9–11 | A rising DPD trend approaching observation signals imminent breach of the 90-day threshold |
-| `dpd_acceleration` | `DPD_11 − 2·DPD_10 + DPD_9` (second difference) | Catches decliners whose deterioration rate is itself increasing — more sensitive than slope alone |
-| `dishonor_slope_3m` | OLS slope of the dishonored flag over months 9–11 | An increasing rate of payment failures is a leading indicator before DPD crosses 90 |
-| `stuck_high_indicator` | `1` if mean(DPD, months 6–11) ≥ 30 **and** std(DPD, months 6–11) ≤ 20 | Identifies chronic-elevated borrowers on a plateau; any shock can push them past 90 DPD |
-| `arrear_balance_trend` | OLS slope of arrear_balance over months 6–11, normalised ÷ 1000 | Growing arrear balance shows progressive inability to service debt even before DPD crosses threshold |
-| `payment_gap_variance` | `Var(max(0, EMI_proxy − payment_amount))` over all 12 months | High variance in shortfalls signals erratic repayment — a strong predictor of future default |
+| Feature                | Formula                                                               | Why it predicts default                                                                              |
+| ---------------------- | --------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `dpd_slope_3m`         | OLS slope of DPD over months 9–11                                     | A rising DPD trend approaching observation signals imminent breach of the 90-day threshold           |
+| `dpd_acceleration`     | `DPD_11 − 2·DPD_10 + DPD_9` (second difference)                       | Catches decliners whose deterioration rate is itself increasing — more sensitive than slope alone    |
+| `dishonor_slope_3m`    | OLS slope of the dishonored flag over months 9–11                     | An increasing rate of payment failures is a leading indicator before DPD crosses 90                  |
+| `stuck_high_indicator` | `1` if mean(DPD, months 6–11) ≥ 30 **and** std(DPD, months 6–11) ≤ 20 | Identifies chronic-elevated borrowers on a plateau; any shock can push them past 90 DPD              |
+| `arrear_balance_trend` | OLS slope of arrear_balance over months 6–11, normalised ÷ 1000       | Growing arrear balance shows progressive inability to service debt even before DPD crosses threshold |
+| `payment_gap_variance` | `Var(max(0, EMI_proxy − payment_amount))` over all 12 months          | High variance in shortfalls signals erratic repayment — a strong predictor of future default         |
 
 Snapshot features (`dpd_month11`, `arrear_month11`, `dishonor_rate_all`, `mean_dpd_all`) are included as supporting context but are not the primary trajectory signals.
 
@@ -71,28 +82,30 @@ python -m pytest tests/test_leakage.py -v
 
 **Architecture**: Two separate `LGBMClassifier` models — one for `target_3m`, one for `target_6m`. Separate models allow each horizon to learn its own feature weights; the trajectory signals relevant at 3 months differ in magnitude from those at 6 months.
 
-**Split**: sorted by `issue_date`, first 70% → train, last 30% → test (no random split).  
+**Split**: sorted by `issue_date`, first 70% → train, last 30% → test (no random split).
 Within train, the last 20% is held out for calibration.
 
 ### Test-set metrics (calibrated probabilities)
 
-| Metric | model_3m | model_6m |
-|---|---|---|
-| AUC-ROC | **0.9896** | **0.9913** |
-| Brier score (raw) | 0.0187 | 0.0098 |
-| Brier score (calibrated) | 0.0166 | 0.0097 |
-| Precision@Top10% | 0.9511 | 0.9844 |
-| Recall@Top10% | 0.8425 | 0.6383 |
+| Metric                   | model_3m   | model_6m   |
+| ------------------------ | ---------- | ---------- |
+| AUC-ROC                  | **0.9896** | **0.9913** |
+| Brier score (raw)        | 0.0187     | 0.0098     |
+| Brier score (calibrated) | 0.0166     | 0.0097     |
+| Precision@Top10%         | 0.9511     | 0.9844     |
+| Recall@Top10%            | 0.8425     | 0.6383     |
 
 **Confusion matrix at operational threshold (see Part C)**
 
 _model_3m_ (threshold = 1.00):
+
 ```
 TN=3992  FP=0
 FN=395   TP=113
 ```
 
 _model_6m_ (threshold = 1.00):
+
 ```
 TN=3795  FP=11
 FN=35    TP=659
@@ -106,10 +119,10 @@ FN=35    TP=659
 
 **Method**: isotonic regression fitted on the calibration hold-out (20% of train). Isotonic regression is preferred over Platt scaling when the score distribution is non-sigmoid (tree ensembles often produce sharply bimodal scores).
 
-| | Brier (raw) | Brier (calibrated) | Improvement |
-|---|---|---|---|
-| model_3m | 0.0187 | 0.0166 | −11% |
-| model_6m | 0.0098 | 0.0097 | −1% |
+|          | Brier (raw) | Brier (calibrated) | Improvement |
+| -------- | ----------- | ------------------ | ----------- |
+| model_3m | 0.0187      | 0.0166             | −11%        |
+| model_6m | 0.0098      | 0.0097             | −1%         |
 
 Calibration improved model_3m noticeably; model_6m was already near-perfectly calibrated (its raw probabilities were already binary-sharp due to near-perfect class separation in the synthetic data).
 
@@ -121,12 +134,12 @@ The threshold is set at the score of the 1.33%-th highest-scored loan in the tes
 
 **Note on threshold = 1.00**: The synthetic data has near-perfect regime separation (decliners have rapidly rising DPD; clean loans are near zero). After isotonic calibration, predicted probabilities collapse to essentially 0 or 1. In production data with noisy labels and overlapping regimes, probabilities would be more graduated and the threshold would be a value like 0.35–0.65.
 
-| | model_3m | model_6m |
-|---|---|---|
-| Operational threshold | 1.00 | 1.00 |
-| Coverage (flagged%) | 2.5% | 14.9% |
-| Precision at threshold | 1.000 | 0.984 |
-| Recall at threshold | 0.222 | 0.950 |
+|                        | model_3m | model_6m |
+| ---------------------- | -------- | -------- |
+| Operational threshold  | 1.00     | 1.00     |
+| Coverage (flagged%)    | 2.5%     | 14.9%    |
+| Precision at threshold | 1.000    | 0.984    |
+| Recall at threshold    | 0.222    | 0.950    |
 
 **Tradeoff explanation**
 
@@ -185,6 +198,7 @@ curl -X POST http://localhost:8000/score \
 ```
 
 Expected response shape:
+
 ```json
 {
   "prob_3m": 1.0,
@@ -207,6 +221,7 @@ curl http://localhost:8000/explain/L005177
 ```
 
 Expected response shape:
+
 ```json
 {
   "loan_id": "L005177",
@@ -222,6 +237,7 @@ Expected response shape:
 ```
 
 **Error cases**:
+
 - Missing required fields → HTTP 422 with Pydantic validation detail
 - `month_idx >= 12` in behavior_history → HTTP 422
 - Unknown `loan_id` in `/explain` → HTTP 404
@@ -233,7 +249,7 @@ Expected response shape:
 
 ### Why did/didn't the 6m head perform worse than the 3m head?
 
-The 6m head performed **slightly better** (AUC 0.9913 vs 0.9896). This is specific to the synthetic data's design: nearly all defaults come from the "decliner" regime, which starts deteriorating 4–10 months before observation. By month 11, most decliners are well into their ramp — the trajectory features (`dpd_slope_3m`, `arrear_balance_trend`) are already highly elevated. A loan defaulting in the 3m window has to be deteriorating very fast *and* close to threshold at observation; a loan defaulting in the 6m window just needs to be clearly on a rising trajectory. The 6m target therefore has a slightly stronger correlation with month-11 features than the 3m target does.
+The 6m head performed **slightly better** (AUC 0.9913 vs 0.9896). This is specific to the synthetic data's design: nearly all defaults come from the "decliner" regime, which starts deteriorating 4–10 months before observation. By month 11, most decliners are well into their ramp — the trajectory features (`dpd_slope_3m`, `arrear_balance_trend`) are already highly elevated. A loan defaulting in the 3m window has to be deteriorating very fast _and_ close to threshold at observation; a loan defaulting in the 6m window just needs to be clearly on a rising trajectory. The 6m target therefore has a slightly stronger correlation with month-11 features than the 3m target does.
 
 In real data you'd expect the opposite — 6m predictions should be harder because there's more time for circumstances to change, signal-to-noise is lower at longer horizons, and concept drift matters more.
 
