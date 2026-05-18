@@ -22,9 +22,9 @@ from lightgbm import LGBMClassifier
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.isotonic import IsotonicRegression
 from sklearn.metrics import (
-    roc_auc_score,
     brier_score_loss,
     confusion_matrix,
+    roc_auc_score,
 )
 
 # Make src importable when run from repo root
